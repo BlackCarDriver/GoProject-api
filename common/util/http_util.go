@@ -1,14 +1,43 @@
 package util
 
+// http请求相关工具
+
 import (
+	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"reflect"
 	"strconv"
 )
 
-func MyPrint() {
-	fmt.Println("successs!!!")
+// GetIpAndPortFromRequire 从请求中获取IP和端口
+func GetIpAndPortFromRequire(r *http.Request) (remoteAddr, port string) {
+	remoteAddr = r.RemoteAddr
+	port = "?"
+	XForwardedFor := "X-Forwarded-For"
+	XRealIP := "X-Real-IP"
+	if ip := r.Header.Get(XRealIP); ip != "" {
+		remoteAddr = ip
+	} else if ip = r.Header.Get(XForwardedFor); ip != "" {
+		remoteAddr = ip
+	} else {
+		remoteAddr, port, _ = net.SplitHostPort(remoteAddr)
+	}
+	if remoteAddr == "::1" {
+		remoteAddr = "127.0.0.1"
+	}
+	return
+}
+
+// WriteJson json格式响应
+func WriteJson(w http.ResponseWriter, data interface{}) error {
+	if bytes, err := json.Marshal(data); err != nil {
+		return err
+	} else if _, err = w.Write(bytes); err != nil {
+		return err
+	}
+	return nil
 }
 
 /*HttpValuesMustUnmarshalJson 将Get请求或Post请求中传输的参数赋值到结构体里面的字段中,以下为注意事项：
