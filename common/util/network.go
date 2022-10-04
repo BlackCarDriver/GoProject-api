@@ -57,24 +57,6 @@ func DownloadSourceByURL(url, fileName string) error {
 	return nil
 }
 
-// SaveDataToFile 将指定数据保存到文件
-func SaveDataToFile(data []byte, path string) (err error) {
-	if _, err = os.Stat(path); err == nil || !os.IsNotExist(err) {
-		err = fmt.Errorf("file may already exist")
-		return err
-	}
-	out, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, bytes.NewReader(data))
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 // CheckAndFixUrlToAbs 检验一个url, 且将相对地址转换为绝对地址
 func CheckAndFixUrlToAbs(baseUrl string, targetUrl *string) error {
 	if baseUrl == "" {
