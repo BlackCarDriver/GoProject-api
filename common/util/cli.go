@@ -9,12 +9,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strings"
-	"syscall"
-)
-
-var (
-	kernel32 *syscall.LazyDLL  = syscall.NewLazyDLL(`kernel32.dll`)
-	proc     *syscall.LazyProc = kernel32.NewProc(`SetConsoleTextAttribute`)
 )
 
 // 颜色枚举
@@ -42,15 +36,11 @@ const (
 
 // ColorPrintf 在控制台打印特定颜色的字体
 func ColorPrintf(color int, format string, arg ...interface{}) {
-	proc.Call(uintptr(syscall.Stdout), uintptr(color))
 	fmt.Printf(format, arg...)
-	proc.Call(uintptr(syscall.Stdout), uintptr(ColorDefault))
 }
 
 func ColorPrintln(color int, any interface{}) {
-	proc.Call(uintptr(syscall.Stdout), uintptr(color))
 	fmt.Println(any)
-	proc.Call(uintptr(syscall.Stdout), uintptr(ColorDefault))
 }
 
 // ClearConsole 清空控制台
