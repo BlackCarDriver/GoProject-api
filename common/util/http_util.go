@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 )
@@ -49,15 +50,6 @@ func WriteJson(w http.ResponseWriter, data interface{}) error {
 - post请求解析失败时检查：前端使用post请求时加上'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8';
 */
 func HttpValuesMustUnmarshalJson(req *http.Request, ptrToTarget interface{}) (err error) {
-	defer func() {
-		msg, ok := recover().(interface{})
-		if ok {
-			var errptr = &err
-			*errptr = fmt.Errorf("catch panic: err=%v", msg)
-		}
-		// log.Info("convert result: error=%v  target=%v", err, ptrToTarget)
-	}()
-
 	if req == nil {
 		return fmt.Errorf("params request is null")
 	}
@@ -107,21 +99,24 @@ func HttpValuesMustUnmarshalJson(req *http.Request, ptrToTarget interface{}) (er
 		case reflect.String:
 			tmpVal.SetString(rawStr)
 		case reflect.Int, reflect.Int32, reflect.Int64:
-			tmpInt, err := strconv.ParseInt(rawStr, 10, 64)
+			var tmpInt int64
+			tmpInt, err = strconv.ParseInt(rawStr, 10, 64)
 			if err != nil {
 				return fmt.Errorf("parse Int fail: index=%d name=%s rawStr=%s err=%v", i, vname, rawStr, err)
 			}
 			tmpVal.SetInt(tmpInt)
 
 		case reflect.Float32, reflect.Float64:
-			tmpFloat, err := strconv.ParseFloat(rawStr, 64)
+			var tmpFloat float64
+			tmpFloat, err = strconv.ParseFloat(rawStr, 64)
 			if err != nil {
 				return fmt.Errorf("parse Float fail: index=%d name=%s rawStr=%s err=%v", i, vname, rawStr, err)
 			}
 			tmpVal.SetFloat(tmpFloat)
 
 		case reflect.Bool:
-			tmpBool, err := strconv.ParseBool(rawStr)
+			var tmpBool bool
+			tmpBool, err = strconv.ParseBool(rawStr)
 			if err != nil {
 				return fmt.Errorf("parse Bool fail: index=%d name=%s rawStr=%s err=%v", i, vname, rawStr, err)
 			}
@@ -132,4 +127,60 @@ func HttpValuesMustUnmarshalJson(req *http.Request, ptrToTarget interface{}) (er
 		}
 	}
 	return nil
+}
+
+// GetRequireWithParams 发起Get请求,请求参数的字段和值从params中获取
+func GetRequireWithParams(rawURL string, params interface{}) (resp *http.Response, err error) {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return
+	}
+	if !u.IsAbs() {
+		err = fmt.Errorf("url must use absolute path")
+		return
+	}
+	res, err := parseObjToURLParams(params)
+	if err != nil {
+		err = fmt.Errorf("unexpect params: err=%v", err)
+		return
+	}
+	u.RawQuery = res.Encode()
+	fixedURL := u.String()
+
+	resp, err = http.Get(fixedURL)
+	return
+}
+
+// 结构体转url传参
+func parseObjToURLParams(obj interface{}) (res url.Values, err error) {
+	res = url.Values{}
+	// 确认是结构体
+	rType := reflect.TypeOf(obj)
+	rValue := reflect.ValueOf(obj)
+	if rType.Kind() != reflect.Struct {
+		err = fmt.Errorf("target type must be struct: type=%v", rType.Kind())
+		return
+	}
+
+	// 遍历结构体中的字段并从表单中获取相应值
+	for i := 0; i < rValue.NumField(); i++ {
+		jsTag, found := rType.Field(i).Tag.Lookup("json")
+		if !found || jsTag == "-" {
+			continue
+		}
+		// 判断是否类型是否支持
+		isSupportKind := false
+		supportKind := []reflect.Kind{reflect.String, reflect.Bool, reflect.Int64, reflect.Int32, reflect.Int}
+		for _, k := range supportKind {
+			if k == rType.Field(i).Type.Kind() {
+				isSupportKind = true
+				break
+			}
+		}
+		if !isSupportKind {
+			continue
+		}
+		res.Add(jsTag, fmt.Sprint(rValue.Field(i)))
+	}
+	return
 }
