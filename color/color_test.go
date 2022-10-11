@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// 用法1
+// 打印所有颜色
 func TestDefault(t *testing.T) {
 	Black("Black")
 	HiBlack("HiBlack")

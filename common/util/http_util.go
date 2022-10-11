@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 )
 
 // GetIpAndPortFromRequire 从请求中获取IP和端口
@@ -139,12 +140,12 @@ func GetRequireWithParams(rawURL string, params interface{}) (resp *http.Respons
 		err = fmt.Errorf("url must use absolute path")
 		return
 	}
-	res, err := parseObjToURLParams(params)
+	reqParams, err := parseObjToURLParams(params)
 	if err != nil {
 		err = fmt.Errorf("unexpect params: err=%v", err)
 		return
 	}
-	u.RawQuery = res.Encode()
+	u.RawQuery = reqParams
 	fixedURL := u.String()
 
 	resp, err = http.Get(fixedURL)
@@ -152,8 +153,7 @@ func GetRequireWithParams(rawURL string, params interface{}) (resp *http.Respons
 }
 
 // 结构体转url传参
-func parseObjToURLParams(obj interface{}) (res url.Values, err error) {
-	res = url.Values{}
+func parseObjToURLParams(obj interface{}) (reqParams string, err error) {
 	// 确认是结构体
 	rType := reflect.TypeOf(obj)
 	rValue := reflect.ValueOf(obj)
@@ -180,7 +180,9 @@ func parseObjToURLParams(obj interface{}) (res url.Values, err error) {
 		if !isSupportKind {
 			continue
 		}
-		res.Add(jsTag, fmt.Sprint(rValue.Field(i)))
+		safeVal := url.QueryEscape(fmt.Sprint(rValue.Field(i)))
+		reqParams += fmt.Sprintf("%s=%s&", jsTag, safeVal)
 	}
+	reqParams = strings.Trim(reqParams, "&")
 	return
 }
