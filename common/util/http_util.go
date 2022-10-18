@@ -147,7 +147,7 @@ func GetRequireWithParams(rawURL string, params interface{}) (resp *http.Respons
 	}
 	u.RawQuery = reqParams
 	fixedURL := u.String()
-
+	//fmt.Println(fixedURL)
 	resp, err = http.Get(fixedURL)
 	return
 }

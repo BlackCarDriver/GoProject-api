@@ -3,6 +3,7 @@ package util
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -105,4 +106,24 @@ func SaveDataToFile(data []byte, path string) (err error) {
 		return err
 	}
 	return nil
+}
+
+// UnmarshalJsonFromFile 将指定文件的文本内容以json格式解析到结构体中
+func UnmarshalJsonFromFile(path string, v interface{}) (err error) {
+	content, err := ParseFileToString(path)
+	if err != nil {
+		return
+	}
+	err = json.Unmarshal([]byte(content), &v)
+	return
+}
+
+// MarshalJsonToFile 将内容以json格式存储到指定文件中
+func MarshalJsonToFile(path string, v interface{}) (err error) {
+	bs, err := json.Marshal(v)
+	if err != nil {
+		return
+	}
+	err = SaveContentToFile(string(bs), path)
+	return
 }
