@@ -5,8 +5,10 @@ package util
 import (
 	"bufio"
 	"fmt"
+	"golang.org/x/text/width"
 	"os"
 	"os/exec"
+	"regexp"
 	"runtime"
 	"strings"
 )
@@ -33,15 +35,6 @@ const (
 )
 
 // ===================================================
-
-// ColorPrintf 在控制台打印特定颜色的字体
-func ColorPrintf(color int, format string, arg ...interface{}) {
-	fmt.Printf(format, arg...)
-}
-
-func ColorPrintln(color int, any interface{}) {
-	fmt.Println(any)
-}
 
 // ClearConsole 清空控制台
 func ClearConsole() error {
@@ -74,3 +67,83 @@ func ScanStdLine() string {
 	text, _ := reader.ReadString('\n')
 	return strings.TrimSpace(text)
 }
+
+// ============ ColumnPrinter =============
+
+// ColumnPrinter 用于在控制台打印表格时对其各列
+type ColumnPrinter struct {
+	space       int
+	table       [][]string
+	colToMaxLen map[int]int // 列id->最大长度
+}
+
+// Write 输入一行,可用任意数量的空格隔开每个元素
+func (c *ColumnPrinter) Write(str string) {
+	reg := regexp.MustCompile("\\s+")
+	cols := reg.Split(strings.TrimSpace(str), -1)
+	if c.colToMaxLen == nil {
+		c.colToMaxLen = map[int]int{}
+	}
+	// 更新各列的最大长度
+	for i, item := range cols {
+		t := getStringWidth(item)
+		if c.colToMaxLen[i] < t {
+			c.colToMaxLen[i] = t
+		}
+	}
+	c.table = append(c.table, cols)
+}
+
+// Print 打印表格
+func (c *ColumnPrinter) Print() {
+	for _, line := range c.table {
+		tmp := ""
+		for j, col := range line {
+			colWidth := c.colToMaxLen[j] + c.space
+			tmp += fmt.Sprintf("%s%s", col, strings.Repeat(" ", colWidth-getStringWidth(col)))
+		}
+		//tmp := strings.Join(line, ",")
+		fmt.Println(tmp)
+	}
+	c.table = [][]string{}
+	c.colToMaxLen = map[int]int{}
+}
+
+func (c *ColumnPrinter) Debug() {
+	for i, r := range c.table {
+		fmt.Printf("table_%d: ", i)
+		for _, item := range r {
+			fmt.Printf("%s(%d), ", item, getStringWidth(item))
+		}
+		fmt.Println()
+	}
+	fmt.Printf("lenMap: %+v \n", c.colToMaxLen)
+}
+
+// NewColumnPrinter 创建一个实例, space控制每列元素的间距
+func NewColumnPrinter(space int) (p ColumnPrinter) {
+	if space <= 0 {
+		space = 1
+	}
+	return ColumnPrinter{space: space}
+}
+
+// 获取字符串的宽度 (目的是解决中文和英文字符宽度不一导致显示对不齐)
+func getStringWidth(str string) int {
+	w := 0
+	//reg := regexp.MustCompile("[^\\x00-\\xFF]+") // 包含非ascii字符
+	//if !reg.MatchString(str) {
+	//	return len(str)
+	//}
+	for _, c := range str {
+		prot := width.LookupRune(c)
+		if prot.Kind() == width.EastAsianWide {
+			w = w + 2
+		} else {
+			w = w + 1
+		}
+	}
+	return w
+}
+
+// ============  =============

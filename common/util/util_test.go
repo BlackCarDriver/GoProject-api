@@ -1,36 +1,12 @@
 package util
 
-import (
-	"testing"
-)
+import "testing"
 
-// http://push2his.eastmoney.com/api/qt/stock/trends2/get?fields1=f1,f2,f3,f4,f5,f6,f7,f8,f9,f10,f11,f12,f13&
-// fields2=f51,f52,f53,f54,f55,f56,f57,f58&
-// ut=fa5fd1943c7b386f172d6893dbfba10b&
-// iscr=0&
-// ndays=1&
-// secid=1.000001&
-// cb=jQuery3510005388373829342763_1665403466103&
-// _=1665403466104
-
-type kLineParams struct {
-	Fields1   string `json:"fields1"`
-	Fields2   string `json:"fields2"`
-	UT        string `json:"ut"`
-	ISCR      int    `json:"iscr"`
-	NDays     int    `json:"ndays"`
-	SECID     string `json:"secid"`
-	CB        string `json:"-"`
-	Timestamp int64  `json:"_"`
-}
-
-// https://push2.eastmoney.com/api/qt/ulist.np/get?
-// cb=jQuery112305582875234802821_1665462176107&
-// fltt=2&
-// secids=1.000001,0.399001&
-// fields=f1,f2,f3,f4,f6,f12,f13,f104,f105,f106&
-// ut=b2884a393a59ad64002292a3e90d46a5&
-// _=1665462176108
-func TestGetRequireWithParams(t *testing.T) {
-
+func TestColumnPrinter(t *testing.T) {
+	pt := NewColumnPrinter(5)
+	pt.Write("中证500 5.96 0.00%     2.23%    -4.19%")
+	pt.Write("中概互联 0.91  -0.55% 7.24% 0.99%")
+	pt.Write("招商银行    29.58 -1.63%    12.47% -1.80%")
+	pt.Write("白酒   1.02 -1.36% 7.96% -1.57%")
+	pt.Print()
 }
