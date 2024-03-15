@@ -5,9 +5,12 @@ package util
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -185,4 +188,46 @@ func parseObjToURLParams(obj interface{}) (reqParams string, err error) {
 	}
 	reqParams = strings.Trim(reqParams, "&")
 	return
+}
+
+// ServerFile 文件服务-提供弹出下载弹框的响应
+func ServerFile(w gin.ResponseWriter, filePath string) error {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	fileState, err := file.Stat()
+	if err != nil {
+		return err
+	}
+	if fileState.IsDir() {
+		return fmt.Errorf("it is floder")
+	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Length", fmt.Sprint(fileState.Size()))
+	w.Header().Set("content-disposition", fmt.Sprintf("attachment; filename=%s", fileState.Name()))
+	_, err = io.Copy(w, file)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetUserIP 获取客户的IP地址
+func GetUserIP(req *http.Request) (ip string) {
+	if len(req.Header.Get("CF-Connecting-IP")) > 1 {
+		return req.Header.Get("CF-Connecting-IP")
+	}
+	if len(req.Header.Get("X-Forwarded-For")) > 1 {
+		return req.Header.Get("X-Forwarded-For")
+	}
+	if len(req.Header.Get("X-Real-IP")) > 1 {
+		return req.Header.Get("X-Real-IP")
+	}
+	userIP := req.RemoteAddr
+	if strings.Contains(userIP, ":") {
+		return net.ParseIP(strings.Split(userIP, ":")[0]).String()
+	}
+	return net.ParseIP(userIP).String()
 }
