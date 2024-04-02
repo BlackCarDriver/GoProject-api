@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"crypto/tls"
 	"github.com/astaxie/beego/logs"
 	"github.com/gin-gonic/gin"
 	"net"
@@ -41,10 +42,38 @@ func startHttpServer(httpServer *http.Server, listener net.Listener) (err error)
 	return err
 }
 
+func startHttpsServer(httpServer *http.Server) (err error) {
+	AtExit(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+		defer cancel()
+		err := httpServer.Shutdown(ctx)
+		log.Info("http server byebye: addr=%s err=%v", httpServer.Addr, err)
+	})
+
+	err = httpServer.ListenAndServeTLS("", "")
+	if err == http.ErrServerClosed {
+		log.Info("http wait shutdown: addr=%s err=%v ", httpServer.Addr, err)
+		select { // fix: wait Shutdown
+		}
+	} else if err != nil {
+		log.Emergency("http server crashed: addr=%s err=%v ", httpServer.Addr, err)
+	}
+	return err
+}
+
 // HTTPGinServe 启动gin http server
 func HTTPGinServe(host, port string, engine *gin.Engine, listener net.Listener) error {
 	return startHttpServer(&http.Server{
 		Addr:    net.JoinHostPort(host, port),
 		Handler: engine,
 	}, listener)
+}
+
+// HTTPSGinServe 启动https server
+func HTTPSGinServe(host, port string, engine *gin.Engine, tlsConfig *tls.Config) error {
+	return startHttpsServer(&http.Server{
+		TLSConfig: tlsConfig,
+		Addr:      net.JoinHostPort(host, port),
+		Handler:   engine,
+	})
 }
